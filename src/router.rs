@@ -1,18 +1,29 @@
 use std::collections::HashMap;
 
+use askama::Template;
 use axum::http::header;
+use axum::response::Html;
 use axum::{Router, routing::get};
 
 use axum::{Json, extract::Request, response::IntoResponse};
 use axum_client_ip::ClientIp;
 use indexmap::IndexMap;
 
-use crate::utils::is_request_json;
+use static_serve::embed_assets;
 
 use crate::config::AppConfig;
+use crate::utils::{is_request_html, is_request_json};
+
+#[derive(Template)]
+#[template(path = "home.html")]
+struct HomeTemplate {
+    headers: IndexMap<String, String>,
+}
+
+embed_assets!("dist", compress = true);
 
 pub fn setup_router(config: AppConfig) -> Router {
-    Router::new()
+    static_router()
         .route("/", get(get_home))
         .route("/ip", get(get_ip))
         .route("/user-agent", get(get_user_agent))
@@ -33,7 +44,11 @@ async fn get_home(ClientIp(ip): ClientIp, req: Request) -> impl IntoResponse {
         return Json(headers).into_response();
     }
 
-    // TODO: HTML view
+    if is_request_html(req.headers()) {
+        let home_template = HomeTemplate { headers };
+
+        return Html(home_template.render().unwrap()).into_response();
+    }
 
     headers
         .iter()

@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+.header__item {
+  @apply flex flex-col;
+  @apply min-w-0;
+
+  & > .header__item-key {
+    @apply text-xs font-medium text-black/70 dark:text-white/80;
+    @apply uppercase;
+  }
+
+  & > .header__item-value {
+    @apply text-base text-black dark:text-white;
+    @apply mt-2;
+    @apply text-wrap;
+    @apply w-full min-w-0;
+    @apply wrap-break-word;
+  }
+
+  &[data-key="ip"] {
+    & > .header__item-value {
+      @apply text-3xl font-medium;
+      @apply slashed-zero tabular-nums;
+    }
+  }
+}
