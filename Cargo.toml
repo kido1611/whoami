@@ -23,3 +23,10 @@ tracing-subscriber = { version = "0.3.22", features = [
   "json",
   "registry",
 ] }
+
+[profile.release]
+opt-level = 3
+codegen-units = 1
+strip = true
+lto = true
+panic = "abort"
