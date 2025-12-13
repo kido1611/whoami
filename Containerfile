@@ -19,6 +19,13 @@ RUN pnpm run build
 
 # ================================================================================= RUST Section
 FROM clux/muslrust:stable AS chef
+ARG TARGETARCH
+RUN case "$TARGETARCH" in \
+  amd64)  echo "x86_64-unknown-linux-musl" > /tmp/target ;; \
+  arm64)  echo "aarch64-unknown-linux-musl" > /tmp/target ;; \
+  *) echo "unsupported arch: $TARGETARCH" && exit 1 ;; \
+esac
+RUN rustup target add "$(cat /tmp/target)"
 USER root
 RUN cargo install cargo-chef
 WORKDIR /app
@@ -28,15 +35,29 @@ COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
 FROM chef AS builder
+ARG TARGETARCH
 COPY --from=planner /app/recipe.json recipe.json
-RUN cargo chef cook --release --target x86_64-unknown-linux-musl --recipe-path recipe.json
+
+RUN --mount=type=cache,id=cargo-registry-${TARGETARCH},target=/usr/local/cargo/registry \
+    --mount=type=cache,id=cargo-git-${TARGETARCH},target=/usr/local/cargo/git \
+    cargo chef cook --release --target "$(cat /tmp/target)" --recipe-path recipe.json
 COPY --from=node-build /app/dist/style.css /app/dist/style.css
 COPY . .
-RUN cargo build --release --target x86_64-unknown-linux-musl
+RUN --mount=type=cache,id=cargo-registry-${TARGETARCH},target=/usr/local/cargo/registry \
+    --mount=type=cache,id=cargo-git-${TARGETARCH},target=/usr/local/cargo/git \
+    cargo build --release --target "$(cat /tmp/target)" && \
+    cp "/app/target/$(cat /tmp/target)/release/whoami" "/app/whoami"
 
 FROM gcr.io/distroless/static-debian13:nonroot AS runtime
+
+LABEL org.opencontainers.image.title=whoami \
+  org.opencontainers.image.description="Alternative ifconfig.me, Detect your IP address" \
+  org.opencontainers.image.url=https://github.com/kido1611/whoami \
+  org.opencontainers.image.source=https://github.com/kido1611/whoami \
+  org.opencontainers.image.vendor="Muhammad Abdusy Syukur"
+
 WORKDIR /app
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/whoami /app/
+COPY --from=builder /app/whoami /app/
 USER nonroot
 
 ENV RUST_LOG=info \

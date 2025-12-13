@@ -1,0 +1,210 @@
+name: Build & Release Image
+
+on:
+  release:
+    types: [published]
+
+env:
+  REGISTRY_IMAGE: abduzzy/whoami
+
+# ============================================================
+# 1. Prepare (sync version, metadata, matrix)
+# ============================================================
+jobs:
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.platforms.outputs.matrix }}
+      tags: ${{ steps.meta.outputs.tags }}
+      labels: ${{ steps.meta.outputs.labels }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # ------------------------------------------------------
+      # Extract + validate version from release tag
+      # ------------------------------------------------------
+      - name: Extract version from release tag
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid release tag: $TAG"
+            exit 1
+          fi
+
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      # ------------------------------------------------------
+      # Sync Cargo.toml version
+      # ------------------------------------------------------
+      - name: Install cargo-edit
+        run: cargo install cargo-edit
+
+      - name: Sync Cargo.toml version
+        run: cargo set-version ${{ steps.version.outputs.version }}
+
+      # Optional but recommended: sanity check
+      - name: Verify Cargo.toml version
+        run: |
+          cargo metadata --no-deps --format-version 1 \
+            | jq -r '.packages[0].version' \
+            | grep -Fx "${{ steps.version.outputs.version }}"
+
+      # ------------------------------------------------------
+      # Platform matrix
+      # ------------------------------------------------------
+      - name: Create platform matrix
+        id: platforms
+        run: |
+          echo 'matrix=["linux/amd64","linux/arm64"]' >> $GITHUB_OUTPUT
+
+      # ------------------------------------------------------
+      # Docker metadata (tags & labels)
+      # ------------------------------------------------------
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY_IMAGE }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest
+          labels: |
+            org.opencontainers.image.created={{date 'YYYY-MM-DDTHH:mm:ssZ'}}
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.revision={{sha}}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.authors=Muhammad Abdusy Syukur <hi@abdusy.dev>
+
+      - name: Rename meta bake definition
+        run: |
+          mv "${{ steps.meta.outputs.bake-file }}" "${{ runner.temp }}/bake-meta.json"
+
+      - name: Upload meta bake definition
+        uses: actions/upload-artifact@v4
+        with:
+          name: bake-meta
+          path: ${{ runner.temp }}/bake-meta.json
+          retention-days: 1
+
+  # ============================================================
+  # 2. Build (per-arch, per-runner)
+  # ============================================================
+  build:
+    name: Build ${{ matrix.platform }}
+    needs: prepare
+    runs-on: ${{ matrix.platform == 'linux/arm64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: ${{ fromJson(needs.prepare.outputs.matrix) }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # IMPORTANT: apply the same Cargo.toml version here
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Sync Cargo.toml version
+        run: |
+          cargo install cargo-edit
+          cargo set-version ${{ needs.prepare.outputs.version }}
+
+      - name: Prepare platform vars
+        run: |
+          platform=${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+
+      - name: Download bake metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: bake-meta
+          path: ${{ runner.temp }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (${{ matrix.platform }})
+        id: bake
+        uses: docker/bake-action@v6
+        with:
+          files: |
+            ./docker-bake.hcl
+            cwd://${{ runner.temp }}/bake-meta.json
+          targets: app
+          set: |
+            *.platform=${{ matrix.platform }}
+            *.cache-from=type=gha
+            *.cache-to=type=gha,mode=max
+            *.output=type=image,push-by-digest=true,name-canonical=true,push=true
+            *.tags=${{ env.REGISTRY_IMAGE }}
+
+      - name: Export image digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ fromJSON(steps.bake.outputs.metadata).app['containerimage.digest'] }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ env.PLATFORM_PAIR }}
+          path: ${{ runner.temp }}/digests/*
+          retention-days: 1
+
+  # ============================================================
+  # 3. Merge manifest
+  # ============================================================
+  merge:
+    name: Create multi-arch manifest
+    needs: [build, prepare]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download bake metadata
+        uses: actions/download-artifact@v4
+        with:
+          name: bake-meta
+          path: ${{ runner.temp }}
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create and push manifest
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create \
+            $(jq -cr '.target."docker-metadata-action".tags | map("-t " + .) | join(" ")' \
+              ${{ runner.temp }}/bake-meta.json) \
+            $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
+
+      - name: Inspect final image
+        run: |
+          docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:latest
