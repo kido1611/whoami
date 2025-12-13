@@ -12,7 +12,7 @@ use indexmap::IndexMap;
 use static_serve::embed_assets;
 
 use crate::config::AppConfig;
-use crate::utils::{is_request_html, is_request_json};
+use crate::utils::{ip_parser, is_request_html, is_request_json};
 
 #[derive(Template)]
 #[template(path = "home.html")]
@@ -31,6 +31,8 @@ pub fn setup_router(config: AppConfig) -> Router {
 }
 
 async fn get_home(ClientIp(ip): ClientIp, req: Request) -> impl IntoResponse {
+    let ip = ip_parser(ip);
+
     let mut headers: IndexMap<String, String> = req
         .headers()
         .iter()
@@ -38,7 +40,7 @@ async fn get_home(ClientIp(ip): ClientIp, req: Request) -> impl IntoResponse {
         .map(|(name, value)| (name.to_string(), value.to_str().unwrap().to_string()))
         .collect::<IndexMap<String, String>>();
 
-    headers.shift_insert(0, "ip".to_string(), ip.to_string());
+    headers.shift_insert(0, "ip".to_string(), ip);
 
     if is_request_json(req.headers()) {
         return Json(headers).into_response();
@@ -59,6 +61,8 @@ async fn get_home(ClientIp(ip): ClientIp, req: Request) -> impl IntoResponse {
 }
 
 async fn get_ip(ClientIp(ip): ClientIp, req: Request) -> impl IntoResponse {
+    let ip = ip_parser(ip);
+
     if is_request_json(req.headers()) {
         let mut map: HashMap<&str, String> = HashMap::new();
         map.insert("ip", ip.to_string());

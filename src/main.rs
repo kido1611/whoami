@@ -10,7 +10,7 @@ async fn main() -> Result<(), anyhow::Error> {
     setup_tracing()?;
 
     let app_config = AppConfig::new()?;
-    let address = format!("0.0.0.0:{}", app_config.port);
+    let address = format!("[::]:{}", app_config.port);
     info!("Listening on {}", address);
 
     let router = setup_router(app_config);
