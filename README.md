@@ -1,4 +1,4 @@
-# whoiam
+# whoami
 
 Alternative ifconfig.me, Detect your IP address.
 
@@ -24,13 +24,13 @@ All configurations can be changed from Environment Variables.
 
 | Name             | Default Value | Description                                                                                                              |
 | ---------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| WHOIAM_PORT      | 8080          | Change app port                                                                                                          |
-| WHOIAM_IP_SOURCE | ConnectInfo   | IP Detection source. Used this when run behind reverse proxy. See IP source section (below) to see all available options |
+| WHOAMI_PORT      | 8080          | Change app port                                                                                                          |
+| WHOAMI_IP_SOURCE | ConnectInfo   | IP Detection source. Used this when run behind reverse proxy. See IP source section (below) to see all available options |
 
 example:
 
 ```sh
-WHOIAM_PORT=80 WHOIAM_IP_SOURCE=CfConnectingIp whoiam
+WHOAMI_PORT=80 WHOAMI_IP_SOURCE=CfConnectingIp whoami
 ```
 
 From that command, the app can be accessed on port 80 and will be using CF-Connecting-IP Header (Cloudflare) to detect IP Address.

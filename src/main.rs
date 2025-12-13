@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use axum::serve;
 use tokio::{net::TcpListener, signal};
 use tracing::info;
-use whoiam::{config::AppConfig, router::setup_router, tracing::setup_tracing};
+use whoami::{config::AppConfig, router::setup_router, tracing::setup_tracing};
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
