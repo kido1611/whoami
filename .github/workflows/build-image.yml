@@ -21,6 +21,16 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure repository was not modified by CI
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "❌ CI modified tracked files during release."
+            git status --porcelain
+            exit 1
+          fi
 
       - uses: dtolnay/rust-toolchain@stable
 
