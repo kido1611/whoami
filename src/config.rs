@@ -15,7 +15,7 @@ impl AppConfig {
         let config = Config::builder()
             .set_default("ip_source", "ConnectInfo")?
             .set_default("port", 8080)?
-            .add_source(config::Environment::with_prefix("IFCONFIG"))
+            .add_source(config::Environment::with_prefix("WHOIAM"))
             .build()?;
 
         config

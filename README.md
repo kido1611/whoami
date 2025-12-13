@@ -1,6 +1,6 @@
-# ifconfig.me
+# whoiam
 
-Self-host ifconfig.me, Detect your IP address.
+Alternative ifconfig.me, Detect your IP address.
 
 ## How To
 
@@ -22,15 +22,15 @@ Add header `Accept: application/json` to get result as JSON format.
 
 All configurations can be changed from Environment Variables.
 
-| Name               | Default Value | Description                                                                                                              |
-| ------------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| IFCONFIG_PORT      | 8080          | Change app port                                                                                                          |
-| IFCONFIG_IP_SOURCE | ConnectInfo   | IP Detection source. Used this when run behind reverse proxy. See IP source section (below) to see all available options |
+| Name             | Default Value | Description                                                                                                              |
+| ---------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| WHOIAM_PORT      | 8080          | Change app port                                                                                                          |
+| WHOIAM_IP_SOURCE | ConnectInfo   | IP Detection source. Used this when run behind reverse proxy. See IP source section (below) to see all available options |
 
 example:
 
 ```sh
-IFCONFIG_PORT=80 IFCONFIG_IP_SOURCE=CfConnectingIp ifconfig-me
+WHOIAM_PORT=80 WHOIAM_IP_SOURCE=CfConnectingIp whoiam
 ```
 
 From that command, the app can be accessed on port 80 and will be using CF-Connecting-IP Header (Cloudflare) to detect IP Address.

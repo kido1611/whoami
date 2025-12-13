@@ -36,13 +36,13 @@ RUN cargo build --release --target x86_64-unknown-linux-musl
 
 FROM gcr.io/distroless/static-debian13:nonroot AS runtime
 WORKDIR /app
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/ifconfig-me /app/
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/whoiam /app/
 USER nonroot
 
 ENV RUST_LOG=info \
-  IFCONFIG_IP_SOURCE=ConnectInfo \
-  IPCONFIG_PORT=8080
+  WHOIAM_IP_SOURCE=ConnectInfo \
+  WHOIAM_PORT=8080
 
 EXPOSE 8080
 
-ENTRYPOINT ["/app/ifconfig-me"]
+ENTRYPOINT ["/app/whoiam"]
