@@ -56,7 +56,9 @@ async fn get_home(ClientIp(ip): ClientIp, req: Request) -> impl IntoResponse {
         let home_template = HomeTemplate {
             headers,
             app_version: built_info::PKG_VERSION.to_string(),
-            app_git_sha: built_info::GIT_COMMIT_HASH_SHORT.unwrap_or("").to_string(),
+            app_git_sha: built_info::GIT_COMMIT_HASH_SHORT
+                .unwrap_or("???????")
+                .to_string(),
         };
 
         return Html(home_template.render().unwrap()).into_response();

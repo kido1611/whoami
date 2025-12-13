@@ -16,7 +16,7 @@ async fn main() -> Result<(), anyhow::Error> {
     info!(
         "app version: v{} - {}",
         built_info::PKG_VERSION,
-        built_info::GIT_COMMIT_HASH_SHORT.unwrap_or("")
+        built_info::GIT_COMMIT_HASH_SHORT.unwrap_or("???????")
     );
 
     let app_config = AppConfig::new()?;
