@@ -14,10 +14,16 @@ use static_serve::embed_assets;
 use crate::config::AppConfig;
 use crate::utils::{ip_parser, is_request_html, is_request_json};
 
+mod built_info {
+    include!(concat!(env!("OUT_DIR"), "/built.rs"));
+}
+
 #[derive(Template)]
 #[template(path = "home.html")]
 struct HomeTemplate {
     headers: IndexMap<String, String>,
+    app_version: String,
+    app_git_sha: String,
 }
 
 embed_assets!("dist", compress = true);
@@ -47,7 +53,11 @@ async fn get_home(ClientIp(ip): ClientIp, req: Request) -> impl IntoResponse {
     }
 
     if is_request_html(req.headers()) {
-        let home_template = HomeTemplate { headers };
+        let home_template = HomeTemplate {
+            headers,
+            app_version: built_info::PKG_VERSION.to_string(),
+            app_git_sha: built_info::GIT_COMMIT_HASH_SHORT.unwrap_or("").to_string(),
+        };
 
         return Html(home_template.render().unwrap()).into_response();
     }

@@ -5,9 +5,19 @@ use tokio::{net::TcpListener, signal};
 use tracing::info;
 use whoami::{config::AppConfig, router::setup_router, tracing::setup_tracing};
 
+mod built_info {
+    include!(concat!(env!("OUT_DIR"), "/built.rs"));
+}
+
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
     setup_tracing()?;
+
+    info!(
+        "app version: v{} - {}",
+        built_info::PKG_VERSION,
+        built_info::GIT_COMMIT_HASH_SHORT.unwrap_or("")
+    );
 
     let app_config = AppConfig::new()?;
     let address = format!("[::]:{}", app_config.port);
