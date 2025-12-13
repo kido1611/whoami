@@ -53,8 +53,9 @@ jobs:
       # ------------------------------------------------------
       # Sync Cargo.toml version
       # ------------------------------------------------------
-      - name: Install cargo-edit
-        run: cargo install cargo-edit
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-edit
 
       - name: Sync Cargo.toml version
         run: cargo set-version ${{ steps.version.outputs.version }}
@@ -121,9 +122,12 @@ jobs:
       # IMPORTANT: apply the same Cargo.toml version here
       - uses: dtolnay/rust-toolchain@stable
 
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-edit
+
       - name: Sync Cargo.toml version
         run: |
-          cargo install cargo-edit
           cargo set-version ${{ needs.prepare.outputs.version }}
 
       - name: Prepare platform vars
