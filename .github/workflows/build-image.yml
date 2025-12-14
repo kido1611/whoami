@@ -8,7 +8,7 @@ env:
   REGISTRY_IMAGE: abduzzy/whoami
 
 # ============================================================
-# 1. Prepare (sync version, metadata, matrix)
+# 1. Prepare (metadata, matrix)
 # ============================================================
 jobs:
   prepare:
@@ -18,7 +18,6 @@ jobs:
       matrix: ${{ steps.platforms.outputs.matrix }}
       tags: ${{ steps.meta.outputs.tags }}
       labels: ${{ steps.meta.outputs.labels }}
-      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -33,39 +32,6 @@ jobs:
           fi
 
       - uses: dtolnay/rust-toolchain@stable
-
-      # ------------------------------------------------------
-      # Extract + validate version from release tag
-      # ------------------------------------------------------
-      - name: Extract version from release tag
-        id: version
-        run: |
-          TAG="${GITHUB_REF_NAME}"
-
-          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Invalid release tag: $TAG"
-            exit 1
-          fi
-
-          VERSION="${TAG#v}"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      # ------------------------------------------------------
-      # Sync Cargo.toml version
-      # ------------------------------------------------------
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-edit
-
-      - name: Sync Cargo.toml version
-        run: cargo set-version ${{ steps.version.outputs.version }}
-
-      # Optional but recommended: sanity check
-      - name: Verify Cargo.toml version
-        run: |
-          cargo metadata --no-deps --format-version 1 \
-            | jq -r '.packages[0].version' \
-            | grep -Fx "${{ steps.version.outputs.version }}"
 
       # ------------------------------------------------------
       # Platform matrix
@@ -88,10 +54,14 @@ jobs:
             type=raw,value=latest
           labels: |
             org.opencontainers.image.created={{date 'YYYY-MM-DDTHH:mm:ssZ'}}
-            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.version={{tag}}
             org.opencontainers.image.revision={{sha}}
-            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.title="whoami"
             org.opencontainers.image.authors=Muhammad Abdusy Syukur <hi@abdusy.dev>
+            org.opencontainers.image.description="Alternative of ifconfig.me, Detect your IP address."
+            org.opencontainers.image.url="https://github.com/${{ github.repository }}"
+            org.opencontainers.image.source="https://github.com/${{ github.repository }}"
+            org.opencontainers.image.vendor="kido1611"
 
       - name: Rename meta bake definition
         run: |
@@ -119,16 +89,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # IMPORTANT: apply the same Cargo.toml version here
       - uses: dtolnay/rust-toolchain@stable
-
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-edit
-
-      - name: Sync Cargo.toml version
-        run: |
-          cargo set-version ${{ needs.prepare.outputs.version }}
 
       - name: Prepare platform vars
         run: |
