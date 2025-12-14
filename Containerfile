@@ -8,9 +8,6 @@ WORKDIR /app
 COPY package.json /app/
 COPY pnpm-lock.yaml /app/
 
-FROM node-base AS node-deps
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-lockfile
-
 FROM node-base AS node-build
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 COPY ./assets /app/assets
@@ -30,24 +27,32 @@ USER root
 RUN cargo install cargo-chef
 WORKDIR /app
 
+# ================================================================================= CHEF PREPARE
 FROM chef AS planner
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
+# ================================================================================= BUILD APP
 FROM chef AS builder
 ARG TARGETARCH
+ARG BUILT_GIT_COMMIT_HASH
+ENV BUILT_GIT_COMMIT_HASH=$BUILT_GIT_COMMIT_HASH
+
 COPY --from=planner /app/recipe.json recipe.json
 
 RUN --mount=type=cache,id=cargo-registry-${TARGETARCH},target=/usr/local/cargo/registry \
     --mount=type=cache,id=cargo-git-${TARGETARCH},target=/usr/local/cargo/git \
     cargo chef cook --release --target "$(cat /tmp/target)" --recipe-path recipe.json
+
 COPY --from=node-build /app/dist/style.css /app/dist/style.css
 COPY . .
+
 RUN --mount=type=cache,id=cargo-registry-${TARGETARCH},target=/usr/local/cargo/registry \
     --mount=type=cache,id=cargo-git-${TARGETARCH},target=/usr/local/cargo/git \
     cargo build --release --target "$(cat /tmp/target)" && \
     cp "/app/target/$(cat /tmp/target)/release/whoami" "/app/whoami"
 
+# ================================================================================= RUNTIME
 FROM gcr.io/distroless/static-debian13:nonroot AS runtime
 
 LABEL org.opencontainers.image.title=whoami \
