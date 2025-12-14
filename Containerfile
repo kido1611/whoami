@@ -35,8 +35,6 @@ RUN cargo chef prepare --recipe-path recipe.json
 # ================================================================================= BUILD APP
 FROM chef AS builder
 ARG TARGETARCH
-ARG BUILT_GIT_COMMIT_HASH
-ENV BUILT_GIT_COMMIT_HASH=$BUILT_GIT_COMMIT_HASH
 
 COPY --from=planner /app/recipe.json recipe.json
 

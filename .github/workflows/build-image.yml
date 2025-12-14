@@ -167,7 +167,6 @@ jobs:
             *.cache-to=type=gha,mode=max
             *.output=type=image,push-by-digest=true,name-canonical=true,push=true
             *.tags=${{ env.REGISTRY_IMAGE }}
-            *.args.BUILT_GIT_COMMIT_HASH=${{ github.sha }}
 
       - name: Export image digest
         run: |
