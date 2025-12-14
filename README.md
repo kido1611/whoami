@@ -2,13 +2,27 @@
 
 Alternative ifconfig.me, Detect your IP address.
 
-## How To
+Docker Hub: [https://hub.docker.com/r/abduzzy/whoami](https://hub.docker.com/r/abduzzy/whoami).
 
-The usage is simple, just access `http://localhost:8080` using browser and the result will be in HTML format.
+## How To Run
+
+Start the server first
+
+```sh
+# docker
+docker run --rm -d -p 8080:8080 --name whoami abduzzy/whoami:latest
+
+# or
+
+# podman
+podman run --rm -d -p 8080:8080 --name whoami abduzzy/whoami:latest
+```
+
+Access `http://localhost:8080` using browser and the result will be in HTML format.
 
 Also can be accessed using HTTP Client (like `curl`, `httpie`) to get in plain text.
 
-Add header `Accept: application/json` to get result as JSON format.
+Add header `Accept: application/json` to get result in JSON format.
 
 ## Available Routes
 
@@ -31,6 +45,16 @@ example:
 
 ```sh
 WHOAMI_PORT=80 WHOAMI_IP_SOURCE=CfConnectingIp whoami
+
+# or
+
+# docker
+docker run --rm -d -p 80:80 --name whoami -e WHOAMI_PORT=80 -e WHOAMI_IP_SOURCE=CfConnectingIp abduzzy/whoami:latest
+
+# or
+
+# podman
+podman run --rm -d -p 80:80 --name whoami -e WHOAMI_PORT=80 -e WHOAMI_IP_SOURCE=CfConnectingIp abduzzy/whoami:latest
 ```
 
 From that command, the app can be accessed on port 80 and will be using CF-Connecting-IP Header (Cloudflare) to detect IP Address.
